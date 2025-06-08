@@ -1,0 +1,69 @@
+import requests
+from bs4 import BeautifulSoup
+import random
+
+def voc(topic,max_words=10):
+ url=f"https://www.yourdictionary.com/index.php?controller=search&search={topic}" #爬取網站的網址
+ headers = {"User-Agent": "Mozilla/5.0"}
+ web = requests.get(url, headers=headers)
+ soup = BeautifulSoup(web.text,"html.parser") #分析網頁，"html.parser"為內建網頁解析器
+ words = []
+ for i in soup.select("a.sentence-item_word"):
+   word = i.get_text(strip=True)
+   if word.isalpha() and word.lower() not in words: # 濾掉奇怪的符號
+     words.append(word.lower())
+   if len(words) >= max_words:
+     break
+ return words
+
+def get_sentence(word):
+ url = f"https://www.yourdictionary.com/{word}"
+ headers = {"User-Agent": "Mozilla/5.0"}
+ web = requests.get(url, headers=headers)
+ if web.status_code != 200:
+  return None
+
+  soup = BeautifulSoup(web.text,"html.parser")
+  tag = soup.find("p",class_="sentence-item_text")
+  if tag:
+    sentence = tag.get_text(strip=True)
+    return sentence
+  return None
+def quiz(topic):
+ print(f"主題:{topic}")
+ words = voc(topic)
+ if not words:
+  print("找不到單字")
+  return
+ quiz_text = []
+ for word in words:
+  sentence = get_sentence(word)
+  if sentence and word.lower() in sentence.lower():
+    quiz_text.append((word, sentence))
+
+ if not quiz_text:
+    print("找不到單字和例句，請換個主題")
+    return
+ random.shuffle(quiz_text)
+ count = 0
+ score = 0
+ for count, (word, sentence) in enumerate(quiz_text, 1):
+   blank = sentence.replace(word,"_____",1)
+   if blank == sentence:
+     blank = sentence.replace(word.capitalize(), "_____", 1)
+
+   print(f"第{count}題:")
+   print(blank)
+   answer = input("請填入空格的單字：").strip().lower()
+   if answer == word.lower():
+    print("正確!")
+    score += 1
+   else:
+    print(f"錯誤,正確答案是:{word}")
+   if count >= 10:
+    break
+ print(f"測驗結束！總答對題數:{score}/{count}題,總分:{score*10}/{count*10}分！")
+
+if __name__ == "__main__":  #只在這支程式被直接執行時才會執行下面的內容
+  topic = input("主題：").strip()
+  quiz(topic)
